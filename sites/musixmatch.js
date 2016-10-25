@@ -7,9 +7,11 @@ var Promise     =   require('promise');
 const KEY = 'MusixMatchScrapper';
 
 module.exports.scrape = function (url, originalQuery) {
+    var s_body = "";
     var options = {
         uri: url,
         transform: function (body) {
+            s_body = body;
             return cheerio.load(body);
         },
         agent: false
@@ -17,15 +19,20 @@ module.exports.scrape = function (url, originalQuery) {
 
     return rp(options)
         .then(function ($) {
-            var artist = $('.mxm-track-title__artist.mxm-track-title__artist-link');
-            var title = $('.mxm-track-title__track');
+            var artist = $('.mxm-track-title__artist.mxm-track-title__artist-link').text();
+            var title = $('.mxm-track-title__track').text();
             var txt = '';
             $('.mxm-lyrics__content').each(function(  ) {
                 txt += $( this ).text();
             });
+
+            if (!artist || !title || !txt){
+                winston.debug(KEY, 'body error', {result: s_body});
+            }
+            
             var result = {
-                artist: artist.text(),
-                title: title.text(),
+                artist: artist,
+                title: title,
                 coincidence: utils.coincidence(originalQuery, txt),
                 url: url
             };
