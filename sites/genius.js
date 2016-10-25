@@ -19,10 +19,12 @@ module.exports.scrape = function (url, originalQuery) {
         .then(function ($) {
             var artist = $('.song_header-primary_info-primary_artist');
             var title = $('.song_header-primary_info-title');
-            var txt = '';
-            $('.lyrics a').each(function(  ) {
-                txt += $( this ).text();
-            });
+            var txt = $('.lyrics p').text();
+            if (!txt){
+                $('.lyrics a').each(function(  ) {
+                    txt += $( this ).text();
+                });
+            }
             var result = {
                 artist: artist.text(),
                 title: title.text(),
