@@ -1,17 +1,16 @@
 var dispatcher  =   require('httpdispatcher');
 var http        =   require('http');
 var winston     =   require('winston');
-var request     =   require('request');
-var cheerio     =   require('cheerio');
-var Promise     =   require('promise');
-var rp          =   require('request-promise');
 var url         =   require('url');
-var utils       =   require('./utils');
 
-require('http').globalAgent.maxSockets = Infinity;
+
+var AZLyricsScrapper = require('./sites/azlyrics');
+var MusixMatchScrapper = require('./sites/musixmatch');
+var GeniusScrapper = require('./sites/genius');
+http.globalAgent.maxSockets = Infinity;
 
 const PORT= process.env.PORT || 8080;
-const KEY = "AZLyricsProxy";
+const KEY = "ScrapperProxy";
 
 winston.level = process.env.LOG_LEVEL || 'error';
 
@@ -53,58 +52,56 @@ dispatcher.onGet("/", function(req, res) {
         return;
     }
 
-    try{
+    try {
         var parse = url.parse(uri);
-        winston.debug(KEY, 'Parse', parse);
-        if (['azlyrics.com', 'www.azlyrics.com'].indexOf(parse.hostname) === -1 ){
-            res.writeHead(400);
-            res.end('Bad uri. Only azlyrics.com requests are allowed');
-            winston.error(KEY, 'error', {reason: 'Bad uri param', uri: uri});
-            return;
-        }
     }
-    catch (e){
+    catch (err) {
         res.writeHead(500);
         res.end('Internal error');
         winston.error(KEY, 'error', {reason: 'Uri verification failed', err: e});
         return;
     }
 
-    var options = {
-        uri: uri,
-        transform: function (body) {
-            return cheerio.load(body);
-        },
-        agent:false
-    };
+    var scrapper;
+    try{
+        winston.debug(KEY, 'Parse', parse);
+        switch(parse.hostname){
+            case 'azlyrics.com':
+            case'www.azlyrics.com':
+                scrapper = AZLyricsScrapper;
+                break;
+            case 'www.musixmatch.com':
+            case 'musixmatch.com':
+                scrapper = MusixMatchScrapper;
+                break;
+            case 'www.genius.com':
+            case 'genius.com':
+                scrapper = GeniusScrapper;
+                break;
+            default:
+                throw new Error('Domain ' + parse.hostname + " isn't suppoted")
+        }
+    }
+    catch (e){
+        res.writeHead(400);
+        res.end(e.message);
+        winston.error(KEY, 'invalid domain', {domain: parse.hostname});
+        return;
+    }
 
-    rp(options)
-        .then(function ($) {
-            var artist = $('.lyricsh h2');
-            var title = $('.lyricsh').next().next();
-            var txt = title.next().next().next();
-            var result = {
-                artist: artist.text().replace(" LYRICS", ""),
-                title: title.text().replace(/^"(.*)"$/, '$1'),
-                coincidence: utils.coincidence(originalQuery, txt.text()),
-                url: uri
-            };
-            winston.debug(KEY, 'success', {result: result});
-            return Promise.resolve(result);
-        })
-        .then(function (result) {
-            res.writeHead(200, {'Content-Type': 'application/json'});
-            res.end(JSON.stringify(result));
-        })
-        .catch(function (err) {
-            var data = {
-                err: err,
-                stack: err.stack && err.stack.split('\n')
-            };
-            winston.error(KEY, 'error', data);
-            res.writeHead(500, {'Content-Type': 'application/json'});
-            res.end(JSON.stringify(data));
-        });
+    scrapper.scrape(uri, originalQuery).then(function (result) {
+        res.writeHead(200, {'Content-Type': 'application/json'});
+        res.end(JSON.stringify(result));
+    })
+    .catch(function (er) {
+        var data = {
+            err: err,
+            stack: err.stack && err.stack.split('\n')
+        };
+        winston.error(KEY, 'error', data);
+        res.writeHead(500, {'Content-Type': 'application/json'});
+        res.end(JSON.stringify(data));
+    });
 });
 
 dispatcher.onError(function(req, res) {
