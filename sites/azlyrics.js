@@ -17,13 +17,17 @@ module.exports.scrape = function (url, originalQuery) {
 
     return rp(options)
         .then(function ($) {
-            var artist = $('.lyricsh h2');
-            var title = $('.lyricsh').next().next();
-            var txt = title.next().next().next();
+            var artist = $('.lyricsh h2').text().replace(" LYRICS", "");
+            var title = $('.lyricsh').next().next().text().replace(/^"(.*)"$/, '$1');
+            var txt = $('.lyricsh').next().next().next();
+            while (txt && txt.get(0) && txt.get(0).name !== 'div'){
+                txt = txt.next();
+            }
+
             var result = {
-                artist: artist.text().replace(" LYRICS", ""),
-                title: title.text().replace(/^"(.*)"$/, '$1'),
-                coincidence: utils.coincidence(originalQuery, txt.text()),
+                artist: artist,
+                title: title,
+                coincidence: utils.coincidence(originalQuery, txt? txt.text(): ""),
                 url: url
             };
             winston.debug(KEY, 'success', {result: result});

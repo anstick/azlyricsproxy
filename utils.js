@@ -6,6 +6,10 @@ function prepareArray(str) {
 }
 
 module.exports.coincidence = function(query, text) {
+    if (!text || !query){
+        return -1;
+    }
+
     var words = prepareArray(text);
 
     var vocab = {};

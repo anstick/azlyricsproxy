@@ -93,7 +93,7 @@ dispatcher.onGet("/", function(req, res) {
         res.writeHead(200, {'Content-Type': 'application/json'});
         res.end(JSON.stringify(result));
     })
-    .catch(function (er) {
+    .catch(function (err) {
         var data = {
             err: err,
             stack: err.stack && err.stack.split('\n')
