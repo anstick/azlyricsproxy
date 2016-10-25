@@ -5,7 +5,6 @@ var url         =   require('url');
 
 
 var AZLyricsScrapper = require('./sites/azlyrics');
-var MusixMatchScrapper = require('./sites/musixmatch');
 var GeniusScrapper = require('./sites/genius');
 http.globalAgent.maxSockets = Infinity;
 
@@ -69,10 +68,6 @@ dispatcher.onGet("/", function(req, res) {
             case 'azlyrics.com':
             case'www.azlyrics.com':
                 scrapper = AZLyricsScrapper;
-                break;
-            case 'www.musixmatch.com':
-            case 'musixmatch.com':
-                scrapper = MusixMatchScrapper;
                 break;
             case 'www.genius.com':
             case 'genius.com':
